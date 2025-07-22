@@ -1,110 +1,57 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Check-in System</title>
-  <style>
-    body { font-family: sans-serif; text-align: center; padding-top: 50px; }
-    .status { font-size: 20px; font-weight: bold; }
-    .processing { color: #007bff; }
-    .success { color: #28a745; }
-    .error { color: #dc3545; }
-  </style>
-</head>
-<body>
-
-  <h1 id="status-text" class="status processing">กำลังประมวลผล...</h1>
-  <p id="error-message"></p>
-
-  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-
-  <script>
-    // URL ของ Web App ที่ได้จาก Google Apps Script
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx8OOQdUmeHTnaSn8O6I_pFjX4d__fA0zQGcb9_6ZuGjJ0p8AYuq2Ec3r0jQk69feoS/exec';
-
-    async function main() {
-      try {
-        // 1. เริ่มต้น LIFF
-        await liff.init({ liffId: '2007794785-M6zwOQBp' });
-
-        if (!liff.isLoggedIn()) {
-          document.getElementById('status-text').innerText = 'กรุณาเข้าสู่ระบบ';
-          liff.login();
-          return;
-        }
-
-        // 2. ดึงข้อมูล Action จาก URL Parameter
-        const urlParams = new URLSearchParams(window.location.search);
-        const action = urlParams.get('action');
-        if (!action) {
-          throw new Error('ไม่พบประเภทการกระทำ (action)');
-        }
-        document.getElementById('status-text').innerText = `กำลัง ${action}... \nกรุณากดยินยอมเพื่อแชร์ตำแหน่ง`;
-
-
-        // 3. ขอตำแหน่งจากผู้ใช้
-        navigator.geolocation.getCurrentPosition(
-          async (position) => {
-            // 4. เมื่อได้ตำแหน่งแล้ว
-            const lat = position.coords.latitude;
-            const lon = position.coords.longitude;
-            const profile = await liff.getProfile();
-            const userId = profile.userId;
-
-            document.getElementById('status-text').innerText = 'กำลังบันทึกข้อมูล...';
-
-            // 5. ส่งข้อมูลไปที่ Google Apps Script
-            const response = await fetch(SCRIPT_URL, {
-              method: 'POST',
-              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-              body: JSON.stringify({
-                userId: userId,
-                action: action,
-                latitude: lat,
-                longitude: lon
-              })
-            });
-
-            const result = await response.json();
-            if (result.status !== 'success') {
-              throw new Error(result.message);
-            }
-
-            // 6. แสดงผลลัพธ์ตาม Action และปิด LIFF
-            // ----- ✨ ส่วนที่แก้ไข ✨ -----
-            if (action === 'checkin') {
-                document.getElementById('status-text').innerText = '✅ Check-In สำเร็จ!';
-            } else if (action === 'checkout') {
-                document.getElementById('status-text').innerText = '🌙 Check-Out สำเร็จ!';
-            } else {
-                document.getElementById('status-text').innerText = 'บันทึกข้อมูลสำเร็จ!';
-            }
-            // -----------------------------
-
-            document.getElementById('status-text').classList.remove('processing');
-            document.getElementById('status-text').classList.add('success');
-
-            setTimeout(() => {
-              liff.closeWindow();
-            }, 2000); // หน่วงเวลา 2 วินาทีเพื่อให้ผู้ใช้เห็นข้อความ
-          },
-          (error) => {
-            // กรณีผู้ใช้ไม่ยินยอมหรือเกิดข้อผิดพลาดในการขอตำแหน่ง
-            throw new Error('ไม่สามารถเข้าถึงตำแหน่งได้: ' + error.message);
-          }
-        );
-
-      } catch (err) {
-        document.getElementById('status-text').innerText = 'เกิดข้อผิดพลาด!';
-        document.getElementById('status-text').classList.remove('processing');
-        document.getElementById('status-text').classList.add('error');
-        document.getElementById('error-message').innerText = err.message;
+{
+  "type": "bubble",
+  "hero": {
+    "type": "image",
+    "url": "https://images.unsplash.com/photo-1542838132-92c53300491e?q=80&w=1974&auto=format&fit=crop",
+    "size": "full",
+    "aspectRatio": "20:13",
+    "aspectMode": "cover"
+  },
+  "body": {
+    "type": "box",
+    "layout": "vertical",
+    "contents": [
+      {
+        "type": "text",
+        "text": "ระบบลงเวลาทำงาน",
+        "weight": "bold",
+        "size": "xl"
+      },
+      {
+        "type": "text",
+        "text": "กรุณากดปุ่มเพื่อบันทึกเวลา",
+        "margin": "md"
       }
-    }
-
-    main();
-  </script>
-
-</body>
-</html>
+    ]
+  },
+  "footer": {
+    "type": "box",
+    "layout": "vertical",
+    "spacing": "sm",
+    "contents": [
+      {
+        "type": "button",
+        "style": "primary",
+        "height": "sm",
+        "action": {
+          "type": "uri",
+          "label": "✅ Check-in",
+          "uri": "https://liff.line.me/2007794785-M6zwOQBp?action=checkin"
+        },
+        "color": "#28a745"
+      },
+      {
+        "type": "button",
+        "style": "primary",
+        "height": "sm",
+        "action": {
+          "type": "uri",
+          "label": "❌ Check-out",
+          "uri": "https://liff.line.me/2007794785-M6zwOQBp?action=checkout"
+        },
+        "color": "#dc3545"
+      }
+    ],
+    "flex": 0
+  }
+}
