@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Check-in System</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; padding-top: 50px; }
+    .status { font-size: 20px; font-weight: bold; }
+    .processing { color: #007bff; }
+    .success { color: #28a745; }
+    .error { color: #dc3545; }
+  </style>
+</head>
+<body>
+
+  <h1 id="status-text" class="status processing">กำลังประมวลผล...</h1>
+  <p id="error-message"></p>
+
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
+  <script>
+    // ⭐️ ใส่ URL ของ Web App ที่ได้จาก Google Apps Script
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx8OOQdUmeHTnaSn8O6I_pFjX4d__fA0zQGcb9_6ZuGjJ0p8AYuq2Ec3r0jQk69feoS/exec';
+
+    async function main() {
+      try {
+        // 1. เริ่มต้น LIFF
+        await liff.init({ liffId: '2007794785-M6zwOQBp' }); // ⭐️ ใส่ LIFF ID ของคุณ
+
+        if (!liff.isLoggedIn()) {
+          document.getElementById('status-text').innerText = 'กรุณาเข้าสู่ระบบ';
+          liff.login();
+          return;
+        }
+
+        // 2. ดึงข้อมูล Action จาก URL Parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const action = urlParams.get('action');
+        if (!action) {
+          throw new Error('ไม่พบประเภทการกระทำ (action)');
+        }
+        document.getElementById('status-text').innerText = `กำลัง ${action}... \nกรุณากดยินยอมเพื่อแชร์ตำแหน่ง`;
+
+
+        // 3. ขอตำแหน่งจากผู้ใช้
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            // 4. เมื่อได้ตำแหน่งแล้ว
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+            const profile = await liff.getProfile();
+            const userId = profile.userId;
+
+            document.getElementById('status-text').innerText = 'กำลังบันทึกข้อมูล...';
+
+            // 5. ส่งข้อมูลไปที่ Google Apps Script
+            const response = await fetch(SCRIPT_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+              body: JSON.stringify({
+                userId: userId,
+                action: action,
+                latitude: lat,
+                longitude: lon
+              })
+            });
+
+            const result = await response.json();
+            if (result.status !== 'success') {
+              throw new Error(result.message);
+            }
+
+            // 6. แสดงผลลัพธ์และปิด LIFF
+            document.getElementById('status-text').innerText = 'บันทึกข้อมูลสำเร็จ!';
+            document.getElementById('status-text').classList.remove('processing');
+            document.getElementById('status-text').classList.add('success');
+
+            setTimeout(() => {
+              liff.closeWindow();
+            }, 1500); // หน่วงเวลา 1.5 วินาทีเพื่อให้ผู้ใช้เห็นข้อความ
+          },
+          (error) => {
+            // กรณีผู้ใช้ไม่ยินยอมหรือเกิดข้อผิดพลาดในการขอตำแหน่ง
+            throw new Error('ไม่สามารถเข้าถึงตำแหน่งได้: ' + error.message);
+          }
+        );
+
+      } catch (err) {
+        document.getElementById('status-text').innerText = 'เกิดข้อผิดพลาด!';
+        document.getElementById('status-text').classList.remove('processing');
+        document.getElementById('status-text').classList.add('error');
+        document.getElementById('error-message').innerText = err.message;
+      }
+    }
+
+    main();
+  </script>
+
+</body>
+</html>
